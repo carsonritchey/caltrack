@@ -1,3 +1,15 @@
+/* to-do
+
+   calculate user's bmi
+   get user's daily goal
+   stats
+   add optional names to meals
+   truncate meal_log
+
+   --optional
+   meal presets
+*/
+
 use std::{fs, io::{prelude::*, BufReader, Write}};
 use chrono;
 
