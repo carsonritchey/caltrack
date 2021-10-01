@@ -1,13 +1,17 @@
 /* to-do
 
+   create dat dir and files if not found 
+   get absolute path for files
    calculate user's bmi
    get user's daily goal
    stats
-   add optional names to meals
    truncate meal_log
+   list option that shows what's been eaten
+       - rename log and put it under list 
 
    --optional
    meal presets
+   better formatting on log 
 */
 
 use std::{fs, io::{prelude::*, BufReader, Write}};
@@ -53,10 +57,8 @@ fn main_menu(menu: &mut Vec<Meal>) {
         let s = prompt("");
 
         if s == MainOptions::Eat.value() {
-            println!("eating");
             eat(menu);
         } else if s == MainOptions::Stats.value() {
-            println!("statting");
             stats(menu);
         } else if s == MainOptions::Log.value() {
             log(menu);
@@ -73,6 +75,7 @@ fn main_menu(menu: &mut Vec<Meal>) {
 struct Meal {
     calories: usize,
     date: String,
+    name: String,
 }
 impl Meal {
     // returns a vector of meals taken from the meal log file
@@ -84,7 +87,8 @@ impl Meal {
 
         for line in reader.lines() {
             let split: Vec<String> = line.unwrap().to_string().split(SEPERATOR).map(|s| s.to_string()).collect();
-            meals.push(Meal {calories: split[1].parse::<usize>().expect("unable to parse meal log data"), date: split.get(0).expect("no date found in meal log").to_string()});
+
+            meals.push(Meal {calories: split[1].parse::<usize>().expect("unable to parse meal log data"), date: split.get(0).expect("no date found in meal log").to_string(), name: split.get(2).expect("no meal name found").to_string()});
         }
 
         return meals;
@@ -105,7 +109,7 @@ impl Meal {
     fn write_meal(&self) {
         let mut f = fs::OpenOptions::new().write(true).append(true).open("dat/meal_log.txt").expect("unable to open meal log file");
 
-        f.write_all(format!("{}{}{}\n", self.date, SEPERATOR, self.calories).as_bytes()).expect("unable to write to meal log file");
+        f.write_all(format!("{}{}{}{}{}\n", self.date, SEPERATOR, self.calories, SEPERATOR, self.name).as_bytes()).expect("unable to write to meal log file");
     }
 
     // removes index from menu and writes it to meal log
@@ -119,6 +123,7 @@ fn new_meal() -> Meal {
     Meal {
         calories: prompt_and_parse("calories in meal?"),
         date: get_date_string(),
+        name: prompt("meal name? (blank for no name)"),
     }
 }
 
@@ -173,9 +178,18 @@ fn log(menu: &mut Vec<Meal>) {
         today.push(meal);
     }
 
-    println!("today's meals: today count: {}", today_count);
+    if today.len() == 0 {
+        println!("no meals eaten today; nothing to remove");
+        return;
+    }
+
+    println!("today's meals:");
     for (i, meal) in today.iter().enumerate() {
-        println!("{}: {}", i + 1, meal.calories);
+        if !meal.name.is_empty() {
+            println!("{}: {} cal ({})", i + 1, meal.calories, meal.name);
+        } else {
+            println!("{}: {} cal", i + 1, meal.calories);
+        }
     }
 
     let mut index: usize;
