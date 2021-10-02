@@ -1,10 +1,8 @@
 /* to-do
    calculate user's bmi
-   get user's daily goal
    stats
    truncate meal_log
    list option that shows what's been eaten
-       - rename log and put it under list 
 
    --optional
    meal presets
@@ -26,6 +24,7 @@ fn main() {
     // puts all previously eaten meals in one place
     let mut menu: Vec<Meal> = Meal::file_to_vec();
 
+    println!("{}", ansi_term::Style::new().italic().paint("type 'help' for help!"));
     loop {
         main_menu(&mut menu, &user);
     }
@@ -52,11 +51,17 @@ impl MainOptions {
 }
 
 fn main_menu(menu: &mut Vec<Meal>, user: &UserInfo) {
-    println!("\ntoday you've eaten {} calories", todays_calories(menu));
+    if todays_calories(menu) == 0 {
+        println!("\n{}", ansi_term::Style::new().bold().paint("no meals eaten today"));
+    } else {
+        println!("\ntoday you've eaten {} calories", ansi_term::Color::Yellow.bold().paint(todays_calories(menu).to_string()));
+    }
     loop {
         let s = prompt("");
 
-        if s == MainOptions::Eat.value() {
+        if s == MainOptions::Help.value() {
+            println!("'eat'   to log a meal\n'stats' to see statistics about your eating habits\n'list'  to see your meal history\n'exit'  to exit");
+        } else if s == MainOptions::Eat.value() {
             eat(menu);
         } else if s == MainOptions::Stats.value() {
             stats(menu, user);
@@ -123,7 +128,7 @@ fn new_meal() -> Meal {
     Meal {
         calories: prompt_and_parse("calories in meal?"),
         date: get_date_string(),
-        name: prompt("meal name? (blank for no name)"),
+        name: prompt("meal name? (press enter for no name)"),
     }
 }
 
@@ -133,21 +138,29 @@ struct UserInfo {
    goal: usize, // desired max calorie intake
 }
 impl UserInfo {
+    // prompts user for info needed for bmr and returns it
+    fn get_bmr() -> usize{
+        
+
+        UserInfo::bmr(false, 0, 0, 0)
+    }
+
     // height in cm and weight in kg 
     fn bmr(male: bool, age: usize, height: usize, weight: usize) -> usize {
         0
     }
 
-    fn file_to_data() {
+    fn file_to_data() -> UserInfo {
         let content = fs::read_to_string(format!("{}{}", dat_path(), USER_INFO_NAME)).expect("unable to open and read user data file");
         let split: Vec<&str> = content.split('\n').collect();
 
-        println!("{}", split[0]);
-        println!("{}", split[1]);
+        UserInfo { bmr: split[0].parse::<usize>().unwrap(), goal: split[1].parse::<usize>().unwrap() }
     }
 
     fn write_current_data(&self) {
+        let mut f = fs::OpenOptions::new().write(true).truncate(true).open(format!("{}{}", dat_path(), USER_INFO_NAME)).expect("unable to clear meal log file");
 
+        f.write_all(format!("{}\n{}", self.bmr, self.goal).as_bytes()).expect("unable to write to user data file");
     }
 }
 
@@ -222,9 +235,19 @@ fn welcome() -> UserInfo {
     fs::create_dir_all(dat_path()).expect("unable to create dat dir");
 
     fs::OpenOptions::new().create(true).write(true).open(format!("{}{}", dat_path(), MEAL_LOG_NAME)).expect("unable to create meal log file");
-    let f = fs::OpenOptions::new().create(true).write(true).open(format!("{}{}", dat_path(), USER_INFO_NAME)).expect("unable to create meal log file");
+    let mut f = fs::OpenOptions::new().create(true).write(true).read(true).open(format!("{}{}", dat_path(), USER_INFO_NAME)).expect("unable to create meal log file");
 
-    UserInfo { bmr: 0, goal: 0 }
+    let mut s = String::new();
+    f.read_to_string(&mut s).expect("unable to read user data file");
+
+    if s.len() == 0 {
+        let user = UserInfo {bmr: UserInfo::get_bmr(), goal: prompt_and_parse("what is your daily calorie goal?")};
+        user.write_current_data();
+
+        return user;
+    } else {
+        return UserInfo::file_to_data();
+    }
 }
 
 // helper functions
@@ -274,17 +297,15 @@ fn todays_calories(menu: &Vec<Meal>) -> usize {
     tally
 }
 
-// returns absolute path to the dat dir file requested
+// returns absolute path to the dat dir
 fn dat_path() -> String {
-    let mut path = String::new();
     match home::home_dir() {
-        Some(p) => path = p.display().to_string(),
+        Some(p) => return format!("{}/{}", p.display().to_string(), DAT_DIR),
         None => panic!("unable to locate home directory"),
     }
-
-    return format!("{}/{}", path, DAT_DIR);
 } 
 
+// returns the number of digits in an integer 
 fn digit_count(n: usize) -> usize {
     if n < 10 {
         return 1;
