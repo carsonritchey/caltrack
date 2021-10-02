@@ -1,5 +1,4 @@
 /* to-do
-
    calculate user's bmi
    get user's daily goal
    stats
@@ -9,7 +8,6 @@
 
    --optional
    meal presets
-   better formatting on log 
 */
 
 use std::{fs, io::{prelude::*, BufReader, Write}};
@@ -23,35 +21,37 @@ const USER_INFO_NAME: &str = "user_info.txt";
 const SEPERATOR: char = ',';
 
 fn main() {
-    welcome();
+    let user: UserInfo = welcome();
 
     // puts all previously eaten meals in one place
     let mut menu: Vec<Meal> = Meal::file_to_vec();
 
     loop {
-        main_menu(&mut menu);
+        main_menu(&mut menu, &user);
     }
 }
 
 // "main menu" options that user can choose 
 enum MainOptions {
+    Help,
     Eat,
     Stats,
-    Log,
+    List,
     Exit
 }
 impl MainOptions {
     fn value(&self) -> &str {
         match *self {
+            MainOptions::Help  => "help",
             MainOptions::Eat   => "eat",
             MainOptions::Stats => "stats",
-            MainOptions::Log   => "log",
+            MainOptions::List  => "list",
             MainOptions::Exit  => "exit",
         }
     }
 }
 
-fn main_menu(menu: &mut Vec<Meal>) {
+fn main_menu(menu: &mut Vec<Meal>, user: &UserInfo) {
     println!("\ntoday you've eaten {} calories", todays_calories(menu));
     loop {
         let s = prompt("");
@@ -59,9 +59,9 @@ fn main_menu(menu: &mut Vec<Meal>) {
         if s == MainOptions::Eat.value() {
             eat(menu);
         } else if s == MainOptions::Stats.value() {
-            stats(menu);
-        } else if s == MainOptions::Log.value() {
-            log(menu);
+            stats(menu, user);
+        } else if s == MainOptions::List.value() {
+            list(menu);
         } else if s == MainOptions::Exit.value() {
             std::process::exit(1);
         } else {
@@ -159,19 +159,27 @@ fn eat(menu: &mut Vec<Meal>) {
 }
 
 // shows stats
-fn stats(menu: &Vec<Meal>) {
-
+fn stats(menu: &Vec<Meal>, user: &UserInfo) {
 }
 
-// removes meal
-fn log(menu: &mut Vec<Meal>) {
+fn list(menu: &mut Vec<Meal>) {
+    remove_from_today(menu);
+}
+
+// removes meal that was eaten today
+fn remove_from_today(menu: &mut Vec<Meal>) {
     let mut today: Vec<&Meal> = Vec::new();
     let today_date = get_date_string();
     let mut today_count: usize = 0;
 
+    let mut longest: usize = 0;
     for meal in menu.iter().rev() {
         if meal.date != today_date {
             break;
+        }
+
+        if digit_count(meal.calories) > longest {
+            longest = digit_count(meal.calories);
         }
 
         today_count += 1;
@@ -185,11 +193,16 @@ fn log(menu: &mut Vec<Meal>) {
 
     println!("today's meals:");
     for (i, meal) in today.iter().enumerate() {
+            let mut space = String::new();
+            for _n in 0..(longest - digit_count(meal.calories)) {
+                space += " "; 
+            }
+
+        print!("{}: {}{} cal", i + 1, meal.calories, space);
         if !meal.name.is_empty() {
-            println!("{}: {} cal ({})", i + 1, meal.calories, meal.name);
-        } else {
-            println!("{}: {} cal", i + 1, meal.calories);
+            print!(" ({})", meal.name);
         }
+        println!();
     }
 
     let mut index: usize;
@@ -205,13 +218,13 @@ fn log(menu: &mut Vec<Meal>) {
 }
 
 // initializes program
-fn welcome() {
+fn welcome() -> UserInfo {
     fs::create_dir_all(dat_path()).expect("unable to create dat dir");
 
-    println!("{}", dat_path());
-
     fs::OpenOptions::new().create(true).write(true).open(format!("{}{}", dat_path(), MEAL_LOG_NAME)).expect("unable to create meal log file");
-    fs::OpenOptions::new().create(true).write(true).open(format!("{}{}", dat_path(), USER_INFO_NAME)).expect("unable to create meal log file");
+    let f = fs::OpenOptions::new().create(true).write(true).open(format!("{}{}", dat_path(), USER_INFO_NAME)).expect("unable to create meal log file");
+
+    UserInfo { bmr: 0, goal: 0 }
 }
 
 // helper functions
@@ -271,3 +284,11 @@ fn dat_path() -> String {
 
     return format!("{}/{}", path, DAT_DIR);
 } 
+
+fn digit_count(n: usize) -> usize {
+    if n < 10 {
+        return 1;
+    }
+
+    return 1 + digit_count(n / 10);
+}
