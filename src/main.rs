@@ -1,7 +1,5 @@
 /* to-do
 
-   create dat dir and files if not found 
-   get absolute path for files
    calculate user's bmi
    get user's daily goal
    stats
@@ -17,7 +15,7 @@
 use std::{fs, io::{prelude::*, BufReader, Write}};
 use chrono;
 
-const DAT_DIR: &str = "dat/";
+const DAT_DIR: &str = ".caltrack/";
 
 const MEAL_LOG_NAME: &str = "meal_log.txt";
 const USER_INFO_NAME: &str = "user_info.txt";
@@ -25,6 +23,8 @@ const USER_INFO_NAME: &str = "user_info.txt";
 const SEPERATOR: char = ',';
 
 fn main() {
+    welcome();
+
     // puts all previously eaten meals in one place
     let mut menu: Vec<Meal> = Meal::file_to_vec();
 
@@ -82,7 +82,7 @@ impl Meal {
     fn file_to_vec() -> Vec<Meal> {
         let mut meals: Vec<Meal> = Vec::new();
 
-        let f = fs::File::open(format!("{}{}", DAT_DIR, MEAL_LOG_NAME)).expect("unable to find meal log file");
+        let f = fs::File::open(format!("{}{}", dat_path(), MEAL_LOG_NAME)).expect("unable to find meal log file");
         let reader = BufReader::new(f);
 
         for line in reader.lines() {
@@ -97,7 +97,7 @@ impl Meal {
     // writes meal vector to meal log file
     fn vec_to_file(menu: &Vec<Meal>) {
         // clears meal log file
-        fs::OpenOptions::new().write(true).truncate(true).open(format!("{}{}", DAT_DIR, MEAL_LOG_NAME)).expect("unable to clear meal log file");
+        fs::OpenOptions::new().write(true).truncate(true).open(format!("{}{}", dat_path(), MEAL_LOG_NAME)).expect("unable to clear meal log file");
 
         // writes all meals to file
         for meal in menu {
@@ -107,7 +107,7 @@ impl Meal {
 
     // appends meal to meal log 
     fn write_meal(&self) {
-        let mut f = fs::OpenOptions::new().write(true).append(true).open("dat/meal_log.txt").expect("unable to open meal log file");
+        let mut f = fs::OpenOptions::new().write(true).append(true).open(format!("{}{}", dat_path(), MEAL_LOG_NAME)).expect("unable to open meal log file");
 
         f.write_all(format!("{}{}{}{}{}\n", self.date, SEPERATOR, self.calories, SEPERATOR, self.name).as_bytes()).expect("unable to write to meal log file");
     }
@@ -139,7 +139,7 @@ impl UserInfo {
     }
 
     fn file_to_data() {
-        let content = fs::read_to_string(format!("{}{}", DAT_DIR, USER_INFO_NAME)).expect("unable to open and read user data file");
+        let content = fs::read_to_string(format!("{}{}", dat_path(), USER_INFO_NAME)).expect("unable to open and read user data file");
         let split: Vec<&str> = content.split('\n').collect();
 
         println!("{}", split[0]);
@@ -204,7 +204,17 @@ fn log(menu: &mut Vec<Meal>) {
     println!("meal {} removed", index + 1);
 }
 
-//helper functions
+// initializes program
+fn welcome() {
+    fs::create_dir_all(dat_path()).expect("unable to create dat dir");
+
+    println!("{}", dat_path());
+
+    fs::OpenOptions::new().create(true).write(true).open(format!("{}{}", dat_path(), MEAL_LOG_NAME)).expect("unable to create meal log file");
+    fs::OpenOptions::new().create(true).write(true).open(format!("{}{}", dat_path(), USER_INFO_NAME)).expect("unable to create meal log file");
+}
+
+// helper functions
 fn prompt(prompt: &str) -> String {
     let mut s = String::new();
     if prompt.len() != 0 {
@@ -250,3 +260,14 @@ fn todays_calories(menu: &Vec<Meal>) -> usize {
 
     tally
 }
+
+// returns absolute path to the dat dir file requested
+fn dat_path() -> String {
+    let mut path = String::new();
+    match home::home_dir() {
+        Some(p) => path = p.display().to_string(),
+        None => panic!("unable to locate home directory"),
+    }
+
+    return format!("{}/{}", path, DAT_DIR);
+} 
