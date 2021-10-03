@@ -75,10 +75,11 @@ fn main_menu(menu: &mut Vec<Meal>, user: &UserInfo) {
         } else if s.starts_with(MainOptions::Stats.value()) {
             stats(menu, user);
         } else if s.starts_with(MainOptions::List.value()) {
-            list(menu);
+            list(menu, user);
         } else if s.starts_with(MainOptions::Exit.value()) {
             std::process::exit(1);
         } else {
+            println!("{}", ansi_term::Style::new().italic().paint("unknown command"));
             continue;
         }
 
@@ -199,24 +200,40 @@ fn stats(menu: &Vec<Meal>, user: &UserInfo) {
     println!("you ate an average of {} calories/day\nyou ate more than your goal {} times", calorie_total as f32 / meal_count as f32, goal_over_count);
 }
 
-fn list(menu: &mut Vec<Meal>) {
+fn list(menu: &mut Vec<Meal>, user: &UserInfo) {
     let days = menu_to_days(menu);
 
     println!("\n{}\n", ansi_term::Style::new().italic().paint("the last 7 days' meals:"));
     if days.len() < 7 {
         for day in days {
-            println!("{}", ansi_term::Style::new().bold().paint(day[0].date.to_string()));
+            if day_to_calories(&day) > user.goal {
+                println!("{}", ansi_term::Color::Red.bold().paint(day[0].date.to_string()));
+            } else {
+                println!("{}", ansi_term::Color::Green.bold().paint(day[0].date.to_string()));
+            }
             for meal in day {
-                println!("{} cal ({})", meal.calories, meal.name);
+                print!("{} cal", meal.calories);
+                if meal.name.len() > 0 {
+                    print!(" ({})", meal.name);
+                }
+                println!();
             }
 
             println!();
         }
     } else {
         for i in (days.len() - 7)..days.len() {
-            println!("{}", ansi_term::Style::new().bold().paint(days[i][0].date.to_string()));
+            if day_to_calories(&days[i]) > user.goal {
+                println!("{}", ansi_term::Color::Red.bold().paint(days[i][0].date.to_string()));
+            } else {
+                println!("{}", ansi_term::Color::Green.bold().paint(days[i][0].date.to_string()));
+            }
             for meal in &days[i] {
-                println!("{} cal ({})", meal.calories, meal.name);
+                print!("{} cal", meal.calories);
+                if meal.name.len() > 0 {
+                    print!(" ({})", meal.name);
+                }
+                println!();
             }
 
             println!();
@@ -329,6 +346,7 @@ fn get_date_string() -> String {
     now.get(0).expect("unable to get date").to_string()
 }
 
+// returns 2d vector of entire menu, split into days containing meals 
 fn menu_to_days(menu: &Vec<Meal>) -> Vec<Vec<&Meal>> {
     let mut days: Vec<Vec<&Meal>> = Vec::new();
 
@@ -358,6 +376,7 @@ fn menu_to_days(menu: &Vec<Meal>) -> Vec<Vec<&Meal>> {
     days
 }
 
+// returns number of calories eaten today 
 fn todays_calories(menu: &Vec<Meal>) -> usize {
     let mut tally: usize = 0;
     let today = get_date_string();
@@ -371,6 +390,16 @@ fn todays_calories(menu: &Vec<Meal>) -> usize {
     }
 
     tally
+}
+
+// returns number of calories eaten in given day 
+fn day_to_calories(day: &Vec<&Meal>) -> usize {
+    let mut t: usize = 0;
+    for meal in day {
+        t += meal.calories; 
+    }
+
+    t
 }
 
 // returns absolute path to the dat dir
