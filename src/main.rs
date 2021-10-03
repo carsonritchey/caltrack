@@ -1,5 +1,6 @@
 /* to-do
    calculate user's bmi
+       imperial to metric 
    stats
    truncate meal_log
    list option that shows what's been eaten
@@ -51,11 +52,19 @@ impl MainOptions {
 }
 
 fn main_menu(menu: &mut Vec<Meal>, user: &UserInfo) {
-    if todays_calories(menu) == 0 {
+    let today = todays_calories(menu);
+    if today == 0 {
         println!("\n{}", ansi_term::Style::new().bold().paint("no meals eaten today"));
     } else {
-        println!("\ntoday you've eaten {} calories", ansi_term::Color::Yellow.bold().paint(todays_calories(menu).to_string()));
+        if today <= user.goal {
+            print!("\ntoday you've eaten {} calories. ", ansi_term::Color::Green.bold().paint(today.to_string()));
+            println!("{}", ansi_term::Style::new().italic().paint("(goal achieved!)"));
+        } else {
+            print!("\ntoday you've eaten {} calories. ", ansi_term::Color::Red.bold().paint(today.to_string()));
+            println!("{}", ansi_term::Style::new().italic().paint(format!("({} calories over goal)", today - user.goal)));
+        }
     }
+
     loop {
         let s = prompt("");
 
@@ -122,13 +131,14 @@ impl Meal {
         menu.remove(index - 1);
         Meal::vec_to_file(menu);
     }
-}
 
-fn new_meal() -> Meal {
-    Meal {
-        calories: prompt_and_parse("calories in meal?"),
-        date: get_date_string(),
-        name: prompt("meal name? (press enter for no name)"),
+    // returns a new meal populated with user inputted data 
+    fn new_meal() -> Meal {
+        Meal {
+            calories: prompt_and_parse("calories in meal?"),
+            date: get_date_string(),
+            name: prompt("meal name? (press enter for no name)"),
+        }
     }
 }
 
@@ -166,13 +176,27 @@ impl UserInfo {
 
 // adds meal 
 fn eat(menu: &mut Vec<Meal>) {
-   &menu.push(new_meal());
+   &menu.push(Meal::new_meal());
 
    Meal::vec_to_file(menu);
 }
 
 // shows stats
 fn stats(menu: &Vec<Meal>, user: &UserInfo) {
+    let mut meal_count: usize = 0;
+    let mut goal_over_count: usize = 0;
+    let mut calorie_total: usize = 0;
+
+    for meal in menu {
+        meal_count += 1;
+        calorie_total += meal.calories;
+
+        if meal.calories > user.goal {
+            goal_over_count += 1; 
+        }
+    }
+
+    println!("you ate an average of {} calories/day\nyou ate more than your goal {} times", calorie_total as f32 / meal_count as f32, goal_over_count);
 }
 
 fn list(menu: &mut Vec<Meal>) {
@@ -280,6 +304,35 @@ fn get_date_string() -> String {
     let now: Vec<&str> = date.split(' ').collect();
 
     now.get(0).expect("unable to get date").to_string()
+}
+
+fn menu_to_days(menu: &Vec<Meal>) -> Vec<Vec<&Meal>> {
+    let mut days: Vec<Vec<&Meal>> = Vec::new();
+
+    let mut last_day = &menu[menu.len() - 1].date;
+    let mut day: Vec<&Meal> = Vec::new();
+    for meal in menu {
+        // new day
+        if meal.date != *last_day {
+            last_day = &meal.date; 
+            
+            days.push(day);
+            day = Vec::new();
+        }
+
+        // last meal in file
+        if std::ptr::eq(meal, &menu[menu.len() - 1]) {
+            day.push(meal);
+            days.push(day);
+            break;
+        }
+
+        day.push(meal);
+    }
+
+    // removes empty vector that's created on Vec::new()
+    days.remove(0);
+    days
 }
 
 fn todays_calories(menu: &Vec<Meal>) -> usize {
