@@ -44,7 +44,7 @@ impl MainOptions {
         match *self {
             MainOptions::Help  => "help",
             MainOptions::Eat   => "eat",
-            MainOptions::Stats => "stats",
+            MainOptions::Stats => "stat",
             MainOptions::List  => "list",
             MainOptions::Exit  => "exit",
         }
@@ -70,13 +70,13 @@ fn main_menu(menu: &mut Vec<Meal>, user: &UserInfo) {
 
         if s == MainOptions::Help.value() {
             println!("'eat'   to log a meal\n'stats' to see statistics about your eating habits\n'list'  to see your meal history\n'exit'  to exit");
-        } else if s == MainOptions::Eat.value() {
+        } else if s.starts_with(MainOptions::Eat.value()) {
             eat(menu);
-        } else if s == MainOptions::Stats.value() {
+        } else if s.starts_with(MainOptions::Stats.value()) {
             stats(menu, user);
-        } else if s == MainOptions::List.value() {
+        } else if s.starts_with(MainOptions::List.value()) {
             list(menu);
-        } else if s == MainOptions::Exit.value() {
+        } else if s.starts_with(MainOptions::Exit.value()) {
             std::process::exit(1);
         } else {
             continue;
@@ -200,6 +200,29 @@ fn stats(menu: &Vec<Meal>, user: &UserInfo) {
 }
 
 fn list(menu: &mut Vec<Meal>) {
+    let days = menu_to_days(menu);
+
+    println!("\n{}\n", ansi_term::Style::new().italic().paint("the last 7 days' meals:"));
+    if days.len() < 7 {
+        for day in days {
+            println!("{}", ansi_term::Style::new().bold().paint(day[0].date.to_string()));
+            for meal in day {
+                println!("{} cal ({})", meal.calories, meal.name);
+            }
+
+            println!();
+        }
+    } else {
+        for i in (days.len() - 7)..days.len() {
+            println!("{}", ansi_term::Style::new().bold().paint(days[i][0].date.to_string()));
+            for meal in &days[i] {
+                println!("{} cal ({})", meal.calories, meal.name);
+            }
+
+            println!();
+        }
+    }
+
     remove_from_today(menu);
 }
 
