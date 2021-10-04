@@ -1,12 +1,10 @@
 /* to-do
    calculate user's bmi
        imperial to metric 
-   stats
-   truncate meal_log
-   list option that shows what's been eaten
 
    --optional
    meal presets
+   truncate meal_log
 */
 
 use std::{fs, io::{prelude::*, BufReader, Write}};
@@ -60,7 +58,11 @@ fn main_menu(menu: &mut Vec<Meal>, user: &UserInfo) {
             print!("\ntoday you've eaten {} calories. ", ansi_term::Color::Green.bold().paint(today.to_string()));
             println!("{}", ansi_term::Style::new().italic().paint("(goal achieved!)"));
         } else {
-            print!("\ntoday you've eaten {} calories. ", ansi_term::Color::Red.bold().paint(today.to_string()));
+            if ((today - user.goal) as f32) < user.goal as f32 * 0.20 {
+                print!("\ntoday you've eaten {} calories. ", ansi_term::Color::Yellow.bold().paint(today.to_string()));
+            } else {
+                print!("\ntoday you've eaten {} calories. ", ansi_term::Color::Red.bold().paint(today.to_string()));
+            }
             println!("{}", ansi_term::Style::new().italic().paint(format!("({} calories over goal)", today - user.goal)));
         }
     }
