@@ -54,7 +54,9 @@ fn main_menu(menu: &mut Vec<Meal>, user: &UserInfo) {
     if today == 0 {
         println!("\n{}", ansi_term::Style::new().bold().paint("no meals eaten today"));
     } else {
-        if today <= user.goal {
+        if user.goal == 0 {
+            println!("\ntoday you've eaten {} calories. ", today);
+        } else if today <= user.goal {
             print!("\ntoday you've eaten {} calories. ", ansi_term::Color::Green.bold().paint(today.to_string()));
             println!("{}", ansi_term::Style::new().italic().paint("(goal achieved!)"));
         } else {
@@ -199,7 +201,8 @@ fn stats(menu: &Vec<Meal>, user: &UserInfo) {
         }
     }
 
-    println!("you ate an average of {} calories/day\nyou ate more than your goal {} times", calorie_total as f32 / meal_count as f32, goal_over_count);
+    println!("you ate an average of {} calories/day", calorie_total as f32 / meal_count as f32);
+    println!("you ate more than your goal {} times", goal_over_count);
 }
 
 fn list(menu: &mut Vec<Meal>, user: &UserInfo) {
@@ -208,7 +211,9 @@ fn list(menu: &mut Vec<Meal>, user: &UserInfo) {
     println!("\n{}\n", ansi_term::Style::new().italic().paint("the last 7 days' meals:"));
     if days.len() < 7 {
         for day in days {
-            if day_to_calories(&day) > user.goal {
+            if user.goal == 0 {
+                println!("{}", day[0].date);
+            } else if day_to_calories(&day) > user.goal {
                 println!("{}", ansi_term::Color::Red.bold().paint(day[0].date.to_string()));
             } else {
                 println!("{}", ansi_term::Color::Green.bold().paint(day[0].date.to_string()));
@@ -225,7 +230,9 @@ fn list(menu: &mut Vec<Meal>, user: &UserInfo) {
         }
     } else {
         for i in (days.len() - 7)..days.len() {
-            if day_to_calories(&days[i]) > user.goal {
+            if user.goal == 0 {
+                println!("{}", days[i][0].date);
+            } else if day_to_calories(&days[i]) > user.goal {
                 println!("{}", ansi_term::Color::Red.bold().paint(days[i][0].date.to_string()));
             } else {
                 println!("{}", ansi_term::Color::Green.bold().paint(days[i][0].date.to_string()));
@@ -307,7 +314,7 @@ fn welcome() -> UserInfo {
     f.read_to_string(&mut s).expect("unable to read user data file");
 
     if s.len() == 0 {
-        let user = UserInfo {bmr: UserInfo::get_bmr(), goal: prompt_and_parse("what is your daily calorie goal?")};
+        let user = UserInfo {bmr: UserInfo::get_bmr(), goal: prompt_and_parse("what is your daily calorie goal? (0 for no goal)")};
         user.write_current_data();
 
         return user;
