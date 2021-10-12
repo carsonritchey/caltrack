@@ -18,14 +18,14 @@ const USER_INFO_NAME: &str = "user_info.txt";
 const SEPERATOR: char = ',';
 
 fn main() {
-    let user: UserInfo = welcome();
+    let mut user: UserInfo = welcome();
 
     // puts all previously eaten meals in one place
     let mut menu: Vec<Meal> = Meal::file_to_vec();
 
     println!("{}", ansi_term::Style::new().italic().paint("type 'help' for help!"));
     loop {
-        main_menu(&mut menu, &user);
+        main_menu(&mut menu, &mut user);
     }
 }
 
@@ -35,6 +35,7 @@ enum MainOptions {
     Eat,
     Stats,
     List,
+    Edit,
     Exit
 }
 impl MainOptions {
@@ -44,12 +45,13 @@ impl MainOptions {
             MainOptions::Eat   => "eat",
             MainOptions::Stats => "stat",
             MainOptions::List  => "list",
+            MainOptions::Edit  => "edit",
             MainOptions::Exit  => "exit",
         }
     }
 }
 
-fn main_menu(menu: &mut Vec<Meal>, user: &UserInfo) {
+fn main_menu(menu: &mut Vec<Meal>, user: &mut UserInfo) {
     let today = todays_calories(menu);
     if today == 0 {
         println!("\n{}", ansi_term::Style::new().bold().paint("no meals eaten today"));
@@ -71,13 +73,15 @@ fn main_menu(menu: &mut Vec<Meal>, user: &UserInfo) {
         let s = prompt("");
 
         if s == MainOptions::Help.value() {
-            println!("'eat'   to log a meal\n'stats' to see statistics about your eating habits\n'list'  to see your meal history\n'exit'  to exit");
+            println!("'eat'   to log a meal\n'stats' to see statistics about your eating habits\n'list'  to see your meal history\n'edit'  to edit previous meals or user information\n'exit'  to exit");
         } else if s.starts_with(MainOptions::Eat.value()) {
             eat(menu);
         } else if s.starts_with(MainOptions::Stats.value()) {
             stats(menu, user);
         } else if s.starts_with(MainOptions::List.value()) {
             list(menu, user);
+        } else if s.starts_with(MainOptions::Edit.value()) {
+            edit(menu, user);
         } else if s.starts_with(MainOptions::Exit.value()) {
             std::process::exit(1);
         } else {
@@ -153,7 +157,12 @@ struct UserInfo {
 impl UserInfo {
     // prompts user for info needed for bmr and returns it
     fn get_bmr() -> usize{
-        
+        println!("calculating bmr...");
+        let sex = loop {
+            let test = prompt("please enter your sex: (m/f)");
+
+            break test;
+        };
 
         UserInfo::bmr(false, 0, 0, 0)
     }
@@ -205,6 +214,10 @@ fn stats(menu: &Vec<Meal>, user: &UserInfo) {
 fn list(menu: &mut Vec<Meal>, user: &UserInfo) {
     let days = menu_to_days(menu);
 
+    if days.len() == 0 || days[days.len() - 1].len() == 0 {
+        return;
+    }
+
     println!("\n{}\n", ansi_term::Style::new().italic().paint("the last 7 days' meals:"));
     if days.len() < 7 {
         for day in days {
@@ -241,8 +254,6 @@ fn list(menu: &mut Vec<Meal>, user: &UserInfo) {
             println!();
         }
     }
-
-    remove_from_today(menu);
 }
 
 // removes meal that was eaten today
@@ -296,6 +307,22 @@ fn remove_from_today(menu: &mut Vec<Meal>) {
     println!("meal {} removed", index + 1);
 }
 
+fn edit(menu: &mut Vec<Meal>, user: &mut UserInfo) {
+    loop {
+        let edit_option = prompt("\nedit meal data, user data, or exit");
+
+        if edit_option == "meal" {
+
+        } else if edit_option == "user" {
+
+        } else if edit_option == "exit" {
+            break;
+        } else {
+            println!("{}", ansi_term::Style::new().italic().paint("unknown command"));
+        }
+    }
+}
+
 // initializes program
 fn welcome() -> UserInfo {
     fs::create_dir_all(dat_path()).expect("unable to create dat dir");
@@ -306,6 +333,7 @@ fn welcome() -> UserInfo {
     let mut s = String::new();
     f.read_to_string(&mut s).expect("unable to read user data file");
 
+    println!("no user data found"); 
     if s.len() == 0 {
         let user = UserInfo {bmr: UserInfo::get_bmr(), goal: prompt_and_parse("what is your daily calorie goal?")};
         user.write_current_data();
@@ -352,6 +380,10 @@ fn get_date_string() -> String {
 fn menu_to_days(menu: &Vec<Meal>) -> Vec<Vec<&Meal>> {
     let mut days: Vec<Vec<&Meal>> = Vec::new();
 
+    if menu.len() == 0 {
+        return days;
+    }
+
     let mut last_day = &menu[menu.len() - 1].date;
     let mut day: Vec<&Meal> = Vec::new();
     for meal in menu {
@@ -373,8 +405,6 @@ fn menu_to_days(menu: &Vec<Meal>) -> Vec<Vec<&Meal>> {
         day.push(meal);
     }
 
-    // removes empty vector that's created on Vec::new()
-    days.remove(0);
     days
 }
 
