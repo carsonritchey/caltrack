@@ -321,7 +321,9 @@ fn edit(menu: &mut Vec<Meal>, user: &mut UserInfo) {
         if edit_option == "meal" {
 
         } else if edit_option == "user" {
-
+            // overwrites user data file
+            fs::OpenOptions::new().write(true).truncate(true).open(format!("{}{}", dat_path(), USER_INFO_NAME)).expect("unable to clear meal log file");
+            *user = welcome(); 
         } else if edit_option == "exit" {
             break;
         } else {
